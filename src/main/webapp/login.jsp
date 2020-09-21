@@ -8,15 +8,12 @@
         }
     }
 %>
-<html>
-<head>
-    <title>Login Form</title>
-    <%@include file="partials/css.jsp"%>
-</head>
-<body>
+
+
+
 <%@include file="partials/navbar.jsp" %>
 <input type="submit">
-<form Method="POST" action= ${pageContext.request.contextPath}/login.jsp>
+<form Method="POST" action= "login.jsp">
     <label for="username">Username</label>
     <input id="username" name="username" type="text">
     <br>
@@ -27,5 +24,3 @@
 </form>
 <%@include file="partials/javascript.jsp" %>
 
-</body>
-</html>
