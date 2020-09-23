@@ -4,69 +4,71 @@ import java.util.List;
 
 import com.mysql.cj.jdbc.Driver;
 
+import javax.xml.transform.Result;
+
 public class MySQLAdsDao implements Ads {
 
-    private Connection connection;
+    private Connection connection = null;
 
-    public MySQLAdsDao() throws SQLException {
-        Config config = new Config();
-        DriverManager.registerDriver(new Driver());
+    public MySQLAdsDao(Config config) {
+        try {
+            DriverManager.registerDriver(new Driver());
 
-        this.connection = DriverManager.getConnection(
-                config.getURL(),
-                config.getUser(),
-                config.getPassword()
-        );
+            connection = DriverManager.getConnection(
+                    config.getURL(),
+                    config.getUser(),
+                    config.getPassword()
+            );
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error", e);
+        }
     }
 
     @Override
     public List<Ad> all() {
-        List<Ad> output = new ArrayList<>();
-        String query = "Select * FROM adlister";
-
+        Statement stmt = null;
         try {
-            Statement statement = connection.createStatement();
-            ResultSet rs = statement.executeQuery(query);
-
-            while (rs.next()) {
-                output.add(
-                        new Ad(
-                                rs.getLong("id"),
-                                rs.getLong("user_id"),
-                                rs.getString("title"),
-                                rs.getString("description")
-                        )
-                );
-            }
+            stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery("Select * FROM ads");
+            return createAdsFromResults(rs);
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error in retrieving the Ads from the Database", e);
         }
-        return output;
     }
 
     @Override
     public Long insert(Ad ad) {
-        long newCreatedAd = 0;
-        String addAdQuery = String.format("INSERT INTO adlister (id, user_id, title, description) VALUES (%d,%d, '%s', '%s')",
-                ad.getId(),
-                ad.getUserId(),
-                ad.getTitle(),
-                ad.getDescription()
-        );
-
-        try {
-            Statement statement = connection.createStatement();
-            statement.executeUpdate(addAdQuery, Statement.RETURN_GENERATED_KEYS);
-            ResultSet ks = statement.getGeneratedKeys();
-            if (ks.next()) {
-                newCreatedAd = ks.getLong(1);
-            }
-            if (newCreatedAd != 0) {
-                ad.setId(newCreatedAd);
-            }
+        try{
+            Statement stmt = connection.createStatement();
+            stmt.executeUpdate(createInsertQuery(ad), Statement.RETURN_GENERATED_KEYS);
+            ResultSet rs = stmt.getGeneratedKeys();
+            rs.next();
+            return rs.getLong(1);
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error generating ad", e);
         }
-        return newCreatedAd;
+    }
+
+    private String createInsertQuery(Ad ad) {
+    return "INSERT INTO ads(user_id, title, description) VALUES"
+            + "(" + ad.getUserId() + ", "
+            + " ' " + ad.getTitle() + "', "
+            + " ' " + ad.getDescription() + " ')";
+}
+    private Ad extractAd(ResultSet rs) throws SQLException {
+        return new Ad(
+                rs.getLong("id"),
+                rs.getLong("user_id"),
+                rs.getString("title"),
+                rs.getString("description")
+        );
+    }
+    private List<Ad> createAdsFromResults(ResultSet rs) throws SQLException {
+        List<Ad> ads = new ArrayList<>();
+        while(rs.next()) {
+            ads.add(extractAd(rs));
+        }
+        return ads;
     }
 }
